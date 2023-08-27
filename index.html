@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChatBOX</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+        }
+
+        body {
+            position: relative;
+            margin: .5em;
+        }
+
+        .avatar {
+            border: 2px solid tomato;
+            border-radius: 100%;
+            margin-right: 1em;
+        }
+
+        div {
+            position: relative;
+            margin-bottom: .3em;
+            display: flex;
+            align-items: center;
+            background-color: rgba(128, 128, 128, .2);
+            padding: .3em;
+            border-radius: 10px;
+        }
+
+        div .name {
+            font-weight: bolder;
+            margin-right: 1em;
+        }
+
+        div .time {
+            position: absolute;
+            right: 0;
+            margin-right: .3em;
+            color: darkviolet;
+            font-size: x-small;
+        }
+
+        #submit {
+            padding: 0 10px;
+            height: 20px;
+            width: 20px;
+            cursor: pointer;
+        }
+
+        div img {
+            padding: .3em;
+        }
+
+        input {
+            outline: none;
+            border: none;
+            width: 100%;
+            padding: 1em;
+            border-radius: 5px;
+        }
+
+        .inputbox {
+            width: 98%;
+            position: fixed;
+            bottom: 0;
+        }
+
+        .message {
+            font-size: small;
+            overflow: auto;
+        }
+
+        div.active:first-child {
+            margin-bottom: 4em;
+        }
+
+        .main {
+            height: 100%;
+            width: 100%;
+            display: flex;
+            flex-direction: column-reverse;
+        }
+    </style>
+</head>
+
+<body>
+    <span class="main">
+    </span>
+
+    <script>
+
+        window.onload = getChats() || createChatBox();
+
+        while (!localStorage.getItem('name') || localStorage.getItem('name') == 'null')
+            localStorage.setItem('name', prompt('Your username: '));
+
+        while (!localStorage.getItem('avatar') || localStorage.getItem('avatar') == 'null')
+            localStorage.setItem('avatar', prompt('Profile Icon URL: '));
+
+        function createBox(name = "Bot", avatar = "https://cdn-icons-png.flaticon.com/512/4081/4081551.png", message = "Hi i am bot", time = (new Date()).toLocaleDateString()) {
+            const divElement = document.createElement("div");
+            divElement.setAttribute("class", "active");
+
+
+            const img = document.createElement("img");
+            img.setAttribute("src", avatar);
+            img.setAttribute("class", "avatar");
+            img.setAttribute("height", "40px");
+            img.setAttribute("width", "40px");
+
+            const span = document.createElement("span");
+            span.setAttribute("class", "name");
+            span.innerText = name;
+
+            const span_1 = document.createElement("span");
+            span_1.setAttribute("class", "message");
+
+            console.log(message.startsWith("https://aiart-images.s3.dualstack.us-east-2.amazonaws.com"))
+
+            if (message.startsWith("https://aiart-images.s3.dualstack.us-east-2.amazonaws.com")) {
+
+                let image = document.createElement("img")
+                image.src = message;
+                image.style = "height:150px;width:150px;"
+                span_1.appendChild(image);
+
+            } else {
+                span_1.innerText = message;
+            }
+
+            const span_2 = document.createElement("span");
+            span_2.setAttribute("class", "time");
+            span_2.innerText = time;
+
+            divElement.appendChild(img);
+            divElement.appendChild(span);
+            divElement.appendChild(span_1);
+            divElement.appendChild(span_2);
+            document.querySelector(".main").appendChild(divElement);
+        }
+
+        function createChatBox() {
+            const divElement_1 = document.createElement("div");
+            divElement_1.setAttribute("class", "inputbox")
+            divElement_1.innerHTML = `<input type="text" name="message" id="message" placeholder="Your message here" onkeydown="submit(event)">
+                                     <img id="submit" onclick="submit(13)"
+                                     src="https://icons.veryicon.com/png/o/business/middle-stage-background-icon/submission-3.png">`;
+            document.body.appendChild(divElement_1);
+        }
+
+        function submit(event) {
+            let value = document.querySelector("input").value;
+
+            let body = {
+                name: localStorage.getItem('name'),
+                message: value,
+                avatar: localStorage.getItem("avatar")
+            };
+
+            if (event.keyCode == 13 || event == 13) {
+
+                document.querySelector("input").value = "";
+                fetch("/", {
+                    "method": "POST",
+                    "body": JSON.stringify(body)
+                }).then(() => {
+                    createBox(localStorage.getItem("name"), localStorage.getItem("avatar"), value, (new Date()).toLocaleDateString());
+
+                })
+            }
+        }
+
+        function getChats() {
+            fetch("/chats")
+                .then(data => data.json())
+                .then(data => data.messages)
+                .then(data => {
+                    data.forEach(element => {
+                        createBox(element.name, element.avatar, element.message, element.time);
+                    });
+                });
+
+            updateChat();
+        }
+
+        function updateChat() {
+            setInterval(function () {
+                fetch("/id?id=" + document.querySelectorAll(".active").length)
+                    .then(data => data.json())
+                    .then(data => {
+                        if (Object.keys(data).length) {
+                            createBox(data.name, data.avatar, data.message, data.time);
+                        }
+                        return;
+                    })
+            }, 1000);
+        }
+    </script>
+</body>
+
+</html>
